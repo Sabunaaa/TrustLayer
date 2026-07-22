@@ -1,6 +1,7 @@
 "use client";
 
 import { use, useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { PublicKey } from "@solana/web3.js";
 import WalletButton from "@/components/WalletButton";
@@ -82,6 +83,12 @@ export default function ListingPage({ params }: { params: Promise<{ id: string }
         <p className="text-neutral-300">
           Couldn&apos;t find this listing. The link may be wrong, or the listing was deleted.
         </p>
+        <Link
+          href="/"
+          className="inline-block mt-4 text-sm text-sky-400 hover:text-sky-300 underline underline-offset-2"
+        >
+          Back to TrustLayer
+        </Link>
       </main>
     );
   }
