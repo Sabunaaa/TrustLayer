@@ -87,6 +87,7 @@ lib/
 programs/trustlayer/        Anchor program (initialize_escrow, deposit, release)
 tests/trustlayer.ts         Anchor/Mocha integration tests
 scripts/create-demo-mint.ts One-off script to mint a fallback "Demo USDC" SPL token
+scripts/mint-demo-usdc.ts  Top up an existing Demo USDC mint for more wallets/testing
 target/idl/, target/types/  Hand-maintained IDL + TS types (see Toolchain notes)
 ```
 
@@ -123,6 +124,9 @@ project-owned six-decimal "Demo USDC" mint:
 # Otherwise, mint your own demo token and fund one or more wallets:
 npm run create-demo-mint -- <buyerWalletPubkey> [sellerWalletPubkey...]
 # then paste the printed mint address into NEXT_PUBLIC_DEMO_MINT
+
+# To top up more Demo USDC to wallets later (reuses the existing mint):
+npm run mint-demo-usdc -- <pubkey> [pubkey...] --amount 1000 --mint <mintAddress>
 ```
 
 This requires `keys/deployer.json` (the program's fee-payer keypair, gitignored) to hold a small

@@ -25,6 +25,7 @@ export default function ListingPage({ params }: { params: Promise<{ id: string }
   const [delivered, setDelivered] = useState(false);
   const [finalImages, setFinalImages] = useState<string[]>([]);
   const [copyLabel, setCopyLabel] = useState("Copy buyer link");
+  const [refreshing, setRefreshing] = useState(false);
 
   const refresh = useCallback(async () => {
     const stored = getListing(id);
@@ -57,6 +58,18 @@ export default function ListingPage({ params }: { params: Promise<{ id: string }
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional fetch-on-mount/id-change
     refresh();
+  }, [refresh]);
+
+  useEffect(() => {
+    function onFocus() {
+      refresh();
+    }
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onFocus);
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onFocus);
+    };
   }, [refresh]);
 
   if (listing === undefined) {
@@ -201,6 +214,15 @@ export default function ListingPage({ params }: { params: Promise<{ id: string }
     }
   }
 
+  async function handleManualRefresh() {
+    setRefreshing(true);
+    try {
+      await refresh();
+    } finally {
+      setRefreshing(false);
+    }
+  }
+
   function copyLink() {
     const url = `${window.location.origin}/listing/${id}`;
     navigator.clipboard.writeText(url).then(() => {
@@ -233,8 +255,21 @@ export default function ListingPage({ params }: { params: Promise<{ id: string }
       {listing.initialRisk && <TrustScoreCard result={listing.initialRisk} title="AI listing review" />}
 
       <div className="rounded-xl border border-neutral-800 p-4">
-        <h2 className="text-sm font-semibold text-neutral-300 mb-3">Escrow status</h2>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-semibold text-neutral-300">Escrow status</h2>
+          <button
+            onClick={handleManualRefresh}
+            disabled={refreshing}
+            className="text-xs text-neutral-500 hover:text-neutral-300 disabled:opacity-50"
+          >
+            {refreshing ? "Refreshing…" : "Refresh status"}
+          </button>
+        </div>
         <EscrowTimeline status={listing.escrowStatus} delivered={delivered || Boolean(listing.finalImage)} />
+        <p className="text-[11px] text-neutral-600 mt-2">
+          Status syncs automatically when you switch back to this tab — using two tabs/wallets? Hit
+          refresh if something looks stale.
+        </p>
       </div>
 
       {error && <p className="text-sm text-rose-400">{error}</p>}
