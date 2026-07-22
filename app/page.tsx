@@ -51,9 +51,9 @@ export default function CreateListingPage() {
         }),
       });
 
-      if (!res.ok) throw new Error("Analysis request failed");
-      const result: RiskResult = await res.json();
-      setRisk(result);
+      const payload = (await res.json()) as RiskResult & { error?: string };
+      if (!res.ok) throw new Error(payload.error || "Analysis request failed");
+      setRisk(payload);
 
       const id = generateListingId();
       saveListing({
@@ -64,13 +64,13 @@ export default function CreateListingPage() {
         images,
         sellerPubkey: "",
         createdAt: Date.now(),
-        initialRisk: result,
+        initialRisk: payload,
         escrowStatus: "created",
       });
       setListingId(id);
     } catch (err) {
       console.error(err);
-      setError("Could not analyze this listing. Please try again.");
+      setError(err instanceof Error ? err.message : "Could not analyze this listing. Please try again.");
     } finally {
       setAnalyzing(false);
     }

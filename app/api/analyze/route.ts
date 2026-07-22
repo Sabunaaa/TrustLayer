@@ -46,6 +46,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(result);
   } catch (err) {
     console.error("/api/analyze failed:", err);
-    return NextResponse.json({ error: "Analysis failed" }, { status: 500 });
+    const message = err instanceof Error ? err.message : "Analysis failed";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

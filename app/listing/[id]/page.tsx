@@ -181,14 +181,14 @@ export default function ListingPage({ params }: { params: Promise<{ id: string }
           finalImage: finalImages[0],
         }),
       });
-      if (!res.ok) throw new Error("Comparison failed");
-      const result: RiskResult = await res.json();
-      const updated = updateListing(id, { finalImage: finalImages[0], compareRisk: result });
+      const payload = (await res.json()) as RiskResult & { error?: string };
+      if (!res.ok) throw new Error(payload.error || "Comparison failed");
+      const updated = updateListing(id, { finalImage: finalImages[0], compareRisk: payload });
       setListing(updated ?? listing);
       setDelivered(true);
     } catch (err) {
       console.error(err);
-      setError("Could not analyze the delivery photo.");
+      setError(err instanceof Error ? err.message : "Could not analyze the delivery photo.");
     } finally {
       setBusy(null);
     }
