@@ -78,10 +78,24 @@ export default function ListingPage({ params }: { params: Promise<{ id: string }
   const escrowId = listing.escrowId;
   const isSeller = Boolean(wallet.publicKey && listing.sellerPubkey === wallet.publicKey.toBase58());
   const isBuyer = Boolean(wallet.publicKey && listing.buyerPubkey === wallet.publicKey.toBase58());
+  const isUnclaimedSeller = listing.sellerPubkey === "";
   const canBecomeBuyer = Boolean(
     wallet.publicKey && !isSeller && listing.escrowStatus === "created" && listing.escrowAddress,
   );
   const mint = getDemoMint();
+
+  let roleLabel: string;
+  if (!wallet.publicKey) {
+    roleLabel = "No wallet connected";
+  } else if (isSeller) {
+    roleLabel = "Connected as the seller";
+  } else if (isBuyer) {
+    roleLabel = "Connected as the buyer";
+  } else if (listing.escrowAddress && listing.buyerPubkey) {
+    roleLabel = "This wallet isn't the seller or buyer on this listing";
+  } else {
+    roleLabel = "Connected — not yet assigned a role on this listing";
+  }
 
   async function handleActivate() {
     if (!listing || !wallet.publicKey) return;
@@ -202,6 +216,8 @@ export default function ListingPage({ params }: { params: Promise<{ id: string }
         <WalletButton />
       </div>
 
+      <p className="text-xs text-neutral-500 -mt-4">{roleLabel}</p>
+
       <div className="flex gap-3 overflow-x-auto">
         {listing.images.map((src, i) => (
           // eslint-disable-next-line @next/next/no-img-element
@@ -228,6 +244,12 @@ export default function ListingPage({ params }: { params: Promise<{ id: string }
           <p className="text-sm text-neutral-300">
             Connect the seller&apos;s wallet to lock this listing into a Solana escrow before sharing the buyer
             link.
+            {isUnclaimedSeller && wallet.publicKey && (
+              <span className="block mt-1 text-amber-400/90">
+                Whichever wallet clicks the button below becomes the recorded seller — make sure it&apos;s
+                the seller&apos;s wallet, not the buyer&apos;s.
+              </span>
+            )}
           </p>
           <WalletButton />
           <button
@@ -266,13 +288,32 @@ export default function ListingPage({ params }: { params: Promise<{ id: string }
               <ExplorerLink href={explorerTxUrl(listing.releaseSignature)}>view</ExplorerLink>
             </div>
           )}
-          <button onClick={copyLink} className="text-sky-400 hover:text-sky-300 text-xs mt-1">
+        </div>
+      )}
+
+      {listing.escrowAddress && listing.escrowStatus === "created" && (
+        <div className="rounded-xl border-2 border-sky-500 bg-sky-500/10 p-4 space-y-3">
+          <p className="text-sm font-semibold text-sky-200">
+            {isSeller ? "Send this link to the buyer" : "Buyer link for this listing"}
+          </p>
+          <p className="text-xs text-sky-200/70 break-all">{`${typeof window !== "undefined" ? window.location.origin : ""}/listing/${id}`}</p>
+          <button
+            onClick={copyLink}
+            className="w-full rounded-lg bg-sky-400 hover:bg-sky-300 text-black font-semibold py-3 text-sm transition-colors"
+          >
             {copyLabel}
           </button>
         </div>
       )}
 
-      {listing.escrowAddress && listing.escrowStatus === "created" && (
+      {listing.escrowAddress && listing.escrowStatus === "created" && isSeller && (
+        <div className="rounded-xl border border-dashed border-neutral-700 p-4 text-sm text-neutral-400">
+          Waiting for the buyer to connect their wallet and deposit {listing.price.toFixed(2)} {TOKEN_LABEL}.
+          Share the link above with them if you haven&apos;t already.
+        </div>
+      )}
+
+      {listing.escrowAddress && listing.escrowStatus === "created" && !isSeller && (
         <div className="rounded-xl border border-neutral-800 p-4 space-y-3">
           <p className="text-sm text-neutral-300">
             Buyer: deposit {listing.price.toFixed(2)} {TOKEN_LABEL} into the escrow. Funds are locked in the
@@ -286,14 +327,21 @@ export default function ListingPage({ params }: { params: Promise<{ id: string }
           >
             {busy === "deposit" ? "Depositing…" : `Deposit ${listing.price.toFixed(2)} ${TOKEN_LABEL}`}
           </button>
+          {!canBecomeBuyer && (
+            <p className="text-xs text-neutral-500">
+              {wallet.publicKey
+                ? "This wallet is the seller's, or already committed as buyer elsewhere — switch to the buyer's wallet."
+                : "Connect the buyer's wallet above to enable this button."}
+            </p>
+          )}
         </div>
       )}
 
       {listing.escrowStatus === "funded" && !listing.finalImage && isSeller && (
         <div className="rounded-xl border border-neutral-800 p-4 space-y-3">
           <p className="text-sm text-neutral-300">
-            Seller: simulate delivery by uploading a proof-of-delivery photo. AI checks it against the
-            original listing photos.
+            Seller: the buyer has deposited funds. Simulate delivery by uploading a proof-of-delivery
+            photo (any photo works for this demo) — AI checks it against the original listing photos.
           </p>
           <ImageDropzone images={finalImages} onChange={setFinalImages} max={1} label="Delivery photo" />
           <button
@@ -306,9 +354,22 @@ export default function ListingPage({ params }: { params: Promise<{ id: string }
         </div>
       )}
 
+      {listing.escrowStatus === "funded" && !listing.finalImage && !isSeller && (
+        <div className="rounded-xl border border-dashed border-neutral-700 p-4 text-sm text-neutral-400">
+          Funds are deposited. Waiting for the seller to upload a delivery photo — switch to the
+          seller&apos;s wallet on this device to continue that step.
+        </div>
+      )}
+
       {listing.compareRisk && <TrustScoreCard result={listing.compareRisk} title="AI delivery comparison" />}
 
-      {listing.escrowStatus === "funded" && listing.finalImage && (
+      {listing.escrowStatus === "funded" && listing.finalImage && isSeller && (
+        <div className="rounded-xl border border-dashed border-neutral-700 p-4 text-sm text-neutral-400">
+          Delivery photo submitted. Waiting for the buyer to review it and release the funds.
+        </div>
+      )}
+
+      {listing.escrowStatus === "funded" && listing.finalImage && !isSeller && (
         <div className="rounded-xl border border-neutral-800 p-4 space-y-3">
           <p className="text-sm text-neutral-300">
             Buyer: delivery has been simulated. If you&apos;re satisfied, release the funds to the seller.
@@ -321,6 +382,13 @@ export default function ListingPage({ params }: { params: Promise<{ id: string }
           >
             {busy === "release" ? "Releasing…" : "Release funds to seller"}
           </button>
+          {!isBuyer && (
+            <p className="text-xs text-neutral-500">
+              {wallet.publicKey
+                ? "This isn't the buyer's wallet — switch to the wallet that made the deposit."
+                : "Connect the buyer's wallet above to enable this button."}
+            </p>
+          )}
         </div>
       )}
 
