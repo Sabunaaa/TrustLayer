@@ -20,13 +20,18 @@ export default function CreateListingPage() {
   const [priorListings, setPriorListings] = useState<Listing[]>([]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- reads localStorage, a client-only external source
-    setPriorListings(listListings());
+    let cancelled = false;
+    listListings().then((rows) => {
+      if (!cancelled) setPriorListings(rows);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [listingId]);
 
-  function handleReset() {
-    if (!window.confirm("Clear all TrustLayer demo listings stored in this browser?")) return;
-    clearAllListings();
+  async function handleReset() {
+    if (!window.confirm("Clear all TrustLayer demo listings?")) return;
+    await clearAllListings();
     setPriorListings([]);
   }
 
@@ -56,7 +61,7 @@ export default function CreateListingPage() {
       setRisk(payload);
 
       const id = generateListingId();
-      saveListing({
+      await saveListing({
         id,
         title,
         description,
@@ -165,7 +170,7 @@ export default function CreateListingPage() {
 
       {!listingId && priorListings.length > 0 && (
         <div className="mt-10 border-t border-neutral-800 pt-6">
-          <h2 className="text-sm font-semibold text-neutral-300 mb-3">Recent listings on this device</h2>
+          <h2 className="text-sm font-semibold text-neutral-300 mb-3">Recent listings</h2>
           <ul className="space-y-2">
             {priorListings.slice(0, 5).map((l) => (
               <li key={l.id}>

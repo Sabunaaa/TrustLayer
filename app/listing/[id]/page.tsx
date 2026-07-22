@@ -28,7 +28,7 @@ export default function ListingPage({ params }: { params: Promise<{ id: string }
   const [refreshing, setRefreshing] = useState(false);
 
   const refresh = useCallback(async () => {
-    const stored = getListing(id);
+    const stored = await getListing(id);
     if (!stored) {
       setListing(null);
       return;
@@ -40,7 +40,7 @@ export default function ListingPage({ params }: { params: Promise<{ id: string }
         if (escrowId) {
           const chain = await fetchEscrow(seller, escrowId);
           if (chain) {
-            const merged = updateListing(id, {
+            const merged = await updateListing(id, {
               escrowStatus: chain.status,
               buyerPubkey: chain.buyer ?? stored.buyerPubkey,
             });
@@ -49,7 +49,7 @@ export default function ListingPage({ params }: { params: Promise<{ id: string }
           }
         }
       } catch {
-        // fall through to whatever is cached locally
+        // fall through to whatever is stored in Supabase
       }
     }
     setListing(stored);
@@ -80,9 +80,7 @@ export default function ListingPage({ params }: { params: Promise<{ id: string }
     return (
       <main className="mx-auto max-w-2xl w-full px-6 py-12 flex-1">
         <p className="text-neutral-300">
-          Couldn&apos;t find this listing on this device/browser. TrustLayer&apos;s hackathon demo stores listing
-          details in the browser that created it — open the buyer link in the same browser profile (a new
-          tab is fine).
+          Couldn&apos;t find this listing. The link may be wrong, or the listing was deleted.
         </p>
       </main>
     );
@@ -125,7 +123,7 @@ export default function ListingPage({ params }: { params: Promise<{ id: string }
         amountUi: listing.price,
         mint,
       });
-      const updated = updateListing(id, {
+      const updated = await updateListing(id, {
         sellerPubkey: wallet.publicKey.toBase58(),
         escrowId: newEscrowId,
         escrowAddress: escrow.toBase58(),
@@ -151,7 +149,7 @@ export default function ListingPage({ params }: { params: Promise<{ id: string }
         escrowId,
         mint,
       });
-      const updated = updateListing(id, {
+      const updated = await updateListing(id, {
         escrowStatus: "funded",
         buyerPubkey: wallet.publicKey.toBase58(),
         depositSignature: signature,
@@ -183,7 +181,7 @@ export default function ListingPage({ params }: { params: Promise<{ id: string }
       });
       const payload = (await res.json()) as RiskResult & { error?: string };
       if (!res.ok) throw new Error(payload.error || "Comparison failed");
-      const updated = updateListing(id, { finalImage: finalImages[0], compareRisk: payload });
+      const updated = await updateListing(id, { finalImage: finalImages[0], compareRisk: payload });
       setListing(updated ?? listing);
       setDelivered(true);
     } catch (err) {
@@ -204,7 +202,7 @@ export default function ListingPage({ params }: { params: Promise<{ id: string }
         escrowId,
         mint,
       });
-      const updated = updateListing(id, { escrowStatus: "released", releaseSignature: signature });
+      const updated = await updateListing(id, { escrowStatus: "released", releaseSignature: signature });
       setListing(updated ?? listing);
     } catch (err) {
       console.error(err);

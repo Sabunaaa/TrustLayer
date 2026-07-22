@@ -1,52 +1,60 @@
 "use client";
 
+import { getSupabase } from "@/lib/supabase";
 import type { Listing } from "@/lib/types";
 
-const STORAGE_KEY = "trustlayer:listings";
-
-function readAll(): Record<string, Listing> {
-  if (typeof window === "undefined") return {};
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    return raw ? (JSON.parse(raw) as Record<string, Listing>) : {};
-  } catch (err) {
-    console.error("Failed to read TrustLayer listings from localStorage:", err);
-    return {};
+export async function saveListing(listing: Listing): Promise<void> {
+  const { error } = await getSupabase().from("listings").upsert({
+    id: listing.id,
+    data: listing,
+    created_at: new Date(listing.createdAt).toISOString(),
+  });
+  if (error) {
+    console.error("Failed to save listing:", error);
+    throw new Error(error.message);
   }
 }
 
-function writeAll(listings: Record<string, Listing>) {
-  if (typeof window === "undefined") return;
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(listings));
+export async function getListing(id: string): Promise<Listing | undefined> {
+  const { data, error } = await getSupabase()
+    .from("listings")
+    .select("data")
+    .eq("id", id)
+    .maybeSingle();
+  if (error) {
+    console.error("Failed to load listing:", error);
+    return undefined;
+  }
+  return (data?.data as Listing | undefined) ?? undefined;
 }
 
-export function saveListing(listing: Listing) {
-  const all = readAll();
-  all[listing.id] = listing;
-  writeAll(all);
-}
-
-export function getListing(id: string): Listing | undefined {
-  return readAll()[id];
-}
-
-export function updateListing(id: string, patch: Partial<Listing>): Listing | undefined {
-  const all = readAll();
-  const existing = all[id];
+export async function updateListing(id: string, patch: Partial<Listing>): Promise<Listing | undefined> {
+  const existing = await getListing(id);
   if (!existing) return undefined;
   const updated = { ...existing, ...patch };
-  all[id] = updated;
-  writeAll(all);
+  await saveListing(updated);
   return updated;
 }
 
-export function listListings(): Listing[] {
-  return Object.values(readAll()).sort((a, b) => b.createdAt - a.createdAt);
+export async function listListings(): Promise<Listing[]> {
+  const { data, error } = await getSupabase()
+    .from("listings")
+    .select("data")
+    .order("created_at", { ascending: false });
+  if (error) {
+    console.error("Failed to list listings:", error);
+    return [];
+  }
+  return (data ?? []).map((row) => row.data as Listing);
 }
 
-/** Wipes all demo listings from this browser. Used by the "reset demo" control. */
-export function clearAllListings() {
-  writeAll({});
+/** Wipes all demo listings. Used by the "reset demo" control. */
+export async function clearAllListings(): Promise<void> {
+  const { error } = await getSupabase().from("listings").delete().neq("id", "");
+  if (error) {
+    console.error("Failed to clear listings:", error);
+    throw new Error(error.message);
+  }
 }
 
 export function generateListingId(): string {

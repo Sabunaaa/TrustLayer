@@ -4,8 +4,8 @@ import { AnchorProvider, BN, Program, type Idl } from "@coral-xyz/anchor";
 import { Connection, PublicKey } from "@solana/web3.js";
 import { getAssociatedTokenAddressSync } from "@solana/spl-token";
 import type { WalletContextState } from "@solana/wallet-adapter-react";
-import idl from "@/target/idl/trustlayer.json";
-import type { Trustlayer } from "@/target/types/trustlayer";
+import idl from "@/lib/solana/idl.json";
+import type { Trustlayer } from "@/lib/solana/trustlayer";
 import { ESCROW_SEED, PROGRAM_ID, SOLANA_RPC_URL, TOKEN_DECIMALS, VAULT_SEED } from "./constants";
 import type { EscrowStatus } from "@/lib/types";
 
