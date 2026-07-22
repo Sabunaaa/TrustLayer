@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "test": "ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts",
-    "create-demo-mint": "ts-node scripts/create-demo-mint.ts"
+    "create-demo-mint": "ts-node scripts/create-demo-mint.ts",
+    "mint-demo-usdc": "ts-node scripts/mint-demo-usdc.ts"
   },
   "dependencies": {
     "@coral-xyz/anchor": "^0.30.1",
